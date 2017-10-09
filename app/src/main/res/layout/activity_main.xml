@@ -1,0 +1,135 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:fab="http://schemas.android.com/apk/res-auto"
+    xmlns:mapbox="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.mapbox.mapboxsdk.maps.MapView
+        android:id="@+id/mapview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        mapbox:mapbox_cameraZoom="1"
+        mapbox:mapbox_uiCompass="true"
+        mapbox:mapbox_uiCompassGravity="top|right"/>
+
+    <ImageButton
+        android:id="@+id/myLocationButton"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_gravity="bottom|left"
+        android:layout_marginLeft="20dp"
+        android:layout_marginBottom="47dp"
+        android:background="@drawable/target1"/>
+
+    <ImageView
+        android:id="@+id/myLocationDisableButton"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_gravity="bottom|left"
+        android:layout_marginLeft="20dp"
+        android:layout_marginBottom="47dp"
+        android:visibility="invisible"
+        android:background="@drawable/target2"/>
+
+
+
+
+
+    <!-- Implementation of find my location button -->
+    <ImageButton
+        android:id="@+id/myEyeDisableButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="35dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginLeft="20dp"
+        android:visibility="invisible"
+        android:background="@drawable/eye2"/>
+
+    <!-- Implementation of find my location button -->
+    <ImageButton
+        android:id="@+id/myEyeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="35dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginLeft="20dp"
+        android:background="@drawable/eye1"/>
+
+
+
+    <com.getbase.floatingactionbutton.FloatingActionsMenu
+        android:id="@+id/fab_menu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|right"
+        android:layout_marginBottom="35dp"
+        android:layout_marginRight="16dp"
+        fab:fab_addButtonColorNormal="#1c8263"
+        fab:fab_addButtonColorPressed="#4ab49a"
+        fab:fab_addButtonPlusIconColor="@color/white"
+        fab:fab_addButtonSize="mini"
+        fab:fab_labelStyle="@style/menu_labels_style"
+        fab:fab_labelsPosition="left">
+
+        <com.getbase.floatingactionbutton.FloatingActionButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="selectStyle"
+            fab:fab_size="mini"
+            fab:fab_colorNormal="#404242"
+            fab:fab_colorPressed="#ffffff"
+            fab:backgroundTint="@android:color/transparent"
+            android:src="@drawable/dark"/>
+
+        <com.getbase.floatingactionbutton.FloatingActionButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="selectStyle2"
+            fab:fab_size="mini"
+            fab:fab_colorNormal="#cdcdcd"
+            fab:fab_colorPressed="#ffffff"
+            fab:backgroundTint="@android:color/transparent"
+            android:src="@drawable/light" />
+
+        <com.getbase.floatingactionbutton.FloatingActionButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="selectStyle3"
+            fab:fab_size="mini"
+            fab:fab_colorNormal="#fff"
+            fab:fab_colorPressed="#fff"
+            fab:backgroundTint="@android:color/transparent"
+            android:src="@drawable/cartoon"/>
+
+
+
+        <com.getbase.floatingactionbutton.FloatingActionButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="selectStyle4"
+            fab:fab_size="mini"
+            fab:fab_colorNormal="#6e6e6e"
+            fab:fab_colorPressed="#ffffff"
+            fab:borderWidth="0dp"
+            fab:backgroundTint="@android:color/transparent"
+            android:src="@drawable/satelite" />
+
+
+        <com.getbase.floatingactionbutton.FloatingActionButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="selectStyle5"
+            fab:fab_size="mini"
+            fab:fab_colorNormal="#b2b3b3"
+            fab:borderWidth="0dp"
+            fab:fab_colorPressed="#ffffff"
+            fab:backgroundTint="@android:color/transparent"
+            android:src="@drawable/street" />
+
+
+    </com.getbase.floatingactionbutton.FloatingActionsMenu>
+
+</FrameLayout>
