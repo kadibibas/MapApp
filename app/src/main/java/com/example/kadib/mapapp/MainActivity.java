@@ -11,6 +11,7 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.internal.ForegroundLinearLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 
@@ -35,6 +36,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Marker;
@@ -47,10 +49,10 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -76,28 +78,25 @@ public class MainActivity extends AppCompatActivity implements android.location.
     double Lat;
     double Lng;
 
-    double prevLat;
-    double prevLng;
+
+
     LocationRequest locationrequest;
     LocationManager locationManager;
     private FusedLocationProviderClient mFusedLocationClient;
     private FusedLocationProviderClient mFusedLocationClient1;
     private FusedLocationProviderClient mFusedLocationClient2;
-    private  boolean move = false;
-    private  boolean visible = false;
+    private  boolean visible;
+    private boolean move = false;
 
     HashMap<String,LatLng> Locations = new HashMap<>();
     HashMap<String,Marker> Markers = new HashMap<>();
-    ArrayList<Marker> markers = new ArrayList<>();
-    ArrayList<String> keys = new ArrayList<>();
+    private ValueEventListener mListener;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         move = true;
-
-
         locationrequest = new LocationRequest();
         locationrequest = LocationRequest.create().setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -107,6 +106,7 @@ public class MainActivity extends AppCompatActivity implements android.location.
 
         //firebase
         mAuth = FirebaseAuth.getInstance();
+
 
         setContentView(R.layout.activity_main);
         mLocationBTN = (ImageButton) findViewById(R.id.myLocationButton);
@@ -182,54 +182,12 @@ public class MainActivity extends AppCompatActivity implements android.location.
                     public void onComplete(@NonNull Task<Void> task) {
 
                         if (task.isSuccessful()) {
-                            mapbox.setMyLocationEnabled(false);
-                            DatabaseReference mRef = FirebaseDatabase.getInstance().getReference().child("Visibles");
-                            mRef.addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                    for(DataSnapshot ds : dataSnapshot.getChildren())
-                                    {
-                                        String key = dataSnapshot.getKey();
-                                        String lat = (String) ds.child("lat").getValue();
-                                        String lng = (String) ds.child("lon").getValue();
-
-                                        double lat1 = Double.valueOf(lat);
-                                        double lng1 = Double.valueOf(lng);
-                                        LatLng latlng = new LatLng(lat1,lng1);
-
-
-                                        Marker marker = mapbox.addMarker(new MarkerViewOptions()
-                                                .position(latlng)
-                                        );
-                                        Markers.put(key,marker);
-                                        Toast.makeText(getApplicationContext(), Markers.size()+"", Toast.LENGTH_LONG).show();
-
-
-
-
-
-
-
-
-
-
-
-
-                                    }
-                                }
-
-                                @Override
-                                public void onCancelled(DatabaseError databaseError) {
-
-                                }
-                            });
                             myLocation.setVisibility(View.GONE);
                             myLocationDisable.setVisibility(View.VISIBLE);
                             visible = true;
-                            FirebaseChanges();
-                            /*
-                            mDatabase = FirebaseDatabase.getInstance().getReference().child("Visibles");
-                            mDatabase.addChildEventListener(new ChildEventListener() {
+                            mapbox.setMyLocationEnabled(false);
+                            DatabaseReference mRef = FirebaseDatabase.getInstance().getReference().child("Visibles");
+                            mRef.addChildEventListener(new ChildEventListener() {
                                 @Override
                                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
 
@@ -242,16 +200,19 @@ public class MainActivity extends AppCompatActivity implements android.location.
 
                                     LatLng latlng = new LatLng(lat1,lng1);
                                     Locations.put(key,latlng);
-
-                                    mapbox.clear();
-                                    for(Map.Entry<String,LatLng> entery : Locations.entrySet())
+                                    if(Markers.containsKey(key))
                                     {
-                                        mapbox.addMarker(new MarkerViewOptions()
-                                                .position(entery.getValue())
-                                        );
-
-
+                                        Marker marker = Markers.get(key);
+                                        mapbox.removeMarker(marker);
+                                        Markers.remove(key);
+                                        Locations.remove(key);
                                     }
+                                    Marker marker =  mapbox.addMarker(new MarkerViewOptions()
+                                            .position(Locations.get(key))
+                                    );
+                                    Markers.put(key,marker);
+
+
 
                                 }
 
@@ -268,46 +229,21 @@ public class MainActivity extends AppCompatActivity implements android.location.
                                     LatLng latlng = new LatLng(lat1,lng1);
                                     Locations.put(key,latlng);
 
-                                    mapbox.clear();
-                                    for(Map.Entry<String,LatLng> entery : Locations.entrySet())
-                                    {
-                                        mapbox.addMarker(new MarkerViewOptions()
-                                                .position(entery.getValue())
-                                        );
-
-
-                                    }
+                                    Marker marker = Markers.get(key);
+                                    marker.setPosition(Locations.get(key));
                                 }
 
                                 @Override
                                 public void onChildRemoved(DataSnapshot dataSnapshot) {
 
                                     String key = dataSnapshot.getKey();
-                                    String lat = (String) dataSnapshot.child("lat").getValue();
-                                    String lng = (String) dataSnapshot.child("lon").getValue();
-
-                                    double lat1 = Double.valueOf(lat);
-                                    double lng1 = Double.valueOf(lng);
-
-                                    LatLng latlng = new LatLng(lat1,lng1);
-                                    Locations.put(key,latlng);
-
-                                    mapbox.clear();
-                                    for(Map.Entry<String,LatLng> entery : Locations.entrySet())
-                                    {
-                                        if(!entery.getKey().equals(key))
-                                        {
-                                            mapbox.addMarker(new MarkerViewOptions()
-                                                    .position(entery.getValue())
-                                            );
-                                        }
-                                        else
-                                        {
-                                            Locations.remove(key);
-                                        }
-                                    }
+                                    Marker marker = Markers.get(key);
+                                    mapbox.removeMarker(marker);
+                                    Markers.remove(key);
+                                    Locations.remove(key);
 
 
+                                    Toast.makeText(getApplicationContext(), Locations.size()+""+"   "+Markers.size()+"", Toast.LENGTH_SHORT).show();
                                 }
 
                                 @Override
@@ -320,7 +256,7 @@ public class MainActivity extends AppCompatActivity implements android.location.
 
                                 }
                             });
-                            */
+
 
 
                         } else {
@@ -339,55 +275,26 @@ public class MainActivity extends AppCompatActivity implements android.location.
         myLocationDisable.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //Progress
-                /*
-                mProgress = new ProgressDialog(MainActivity.this);
-                mProgress.setTitle("hied you'r visibility");
-                mProgress.setMessage("Please wait while we hied you'r visibility");
-                mProgress.show();
-                */
                 FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
                 String uid = current_user.getUid();
-                mDatabase = FirebaseDatabase.getInstance().getReference().child("Users").child(uid);
-                mDatabase.child("visibility").setValue("Invisible").addOnCompleteListener(new OnCompleteListener<Void>() {
+                mDatabase = FirebaseDatabase.getInstance().getReference();
+                mDatabase.child("Users").child(uid).child("visibility").setValue("Invisible").addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
+                        visible = false;
+                        myLocationDisable.setVisibility(View.GONE);
+                        myLocation.setVisibility(View.VISIBLE);
+                        FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
+                        String uid = current_user.getUid();
+                        DatabaseReference mRef = FirebaseDatabase.getInstance().getReference().child("Visibles");
+                        mDatabase.child("Visibles").child(uid).setValue(null);
+                        mDatabase.child("Visibles").child(uid).removeValue(null);
+                        mapbox.clear();
+                        mapbox.setMyLocationEnabled(true);
+                        Markers.clear();
+                        Locations.clear();
 
-                        if (task.isSuccessful()) {
-
-
-                            myLocationDisable.setVisibility(View.GONE);
-                            myLocation.setVisibility(View.VISIBLE);
-                            FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
-                            String uid = current_user.getUid();
-                            mDatabase = FirebaseDatabase.getInstance().getReference().child("Visibles").child(uid);
-                            mDatabase.setValue(null);
-                            mDatabase.removeValue(null);
-                            visible = false;
-                            DatabaseReference mRef = FirebaseDatabase.getInstance().getReference().child("Visibles");
-                            mRef.addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(DataSnapshot dataSnapshot) {
-
-                                    mapbox.clear();
-                                    Markers.clear();
-                                }
-
-                                @Override
-                                public void onCancelled(DatabaseError databaseError) {
-
-                                }
-                            });
-                            //mapbox.clear();
-                            mapbox.setMyLocationEnabled(true);
-
-
-
-                        } else {
-
-                            Toast.makeText(getApplicationContext(), "There was some error to set visibility.", Toast.LENGTH_LONG).show();
-
-                        }
+                        Toast.makeText(getApplicationContext(), Locations.size()+""+"   "+Markers.size()+"", Toast.LENGTH_SHORT).show();
 
                     }
                 });
@@ -395,9 +302,9 @@ public class MainActivity extends AppCompatActivity implements android.location.
 
             }
         });
-
-
     }
+
+
 
 
     private void sendToStart() {
@@ -456,21 +363,25 @@ public class MainActivity extends AppCompatActivity implements android.location.
     protected void onResume() {
         super.onResume();
         mapView.onResume();
-        move=true;
-        FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
-        String uid = current_user.getUid();
-        mDatabase = FirebaseDatabase.getInstance().getReference().child("users").child(uid).child("visibility");
-        if(mDatabase.equals("visible"))
-        {
-            visible = true;
-        }
+
+        Toast.makeText(getApplicationContext(), "resume", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         mapView.onPause();
-        move=true;
+
+        FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
+        String uid = current_user.getUid();
+        mDatabase = FirebaseDatabase.getInstance().getReference().child("Users").child(uid);
+
+        if(mDatabase.equals("null"))
+        {
+            Toast.makeText(getApplicationContext(), "hiii", Toast.LENGTH_SHORT).show();
+        }
+
+        Toast.makeText(getApplicationContext(), "pause", Toast.LENGTH_SHORT).show();
     }
 
 
@@ -478,7 +389,8 @@ public class MainActivity extends AppCompatActivity implements android.location.
     protected void onStop() {
         super.onStop();
         mapView.onStop();
-        move=false;
+
+        Toast.makeText(getApplicationContext(), "stop", Toast.LENGTH_SHORT).show();
 
 
 
@@ -488,6 +400,8 @@ public class MainActivity extends AppCompatActivity implements android.location.
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+
+        Toast.makeText(getApplicationContext(), "destroy", Toast.LENGTH_SHORT).show();
 
     }
 
@@ -615,8 +529,6 @@ public class MainActivity extends AppCompatActivity implements android.location.
         Date date = Calendar.getInstance().getTime();
         String todayWithZeroTime = formatter.format(date);
         String time = formatTime.format(date);
-        long current_Time =System.currentTimeMillis()/1000;
-        String currentTime = String.valueOf(current_Time);
         FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
         String uid = current_user.getUid();
         mDatabase = FirebaseDatabase.getInstance().getReference().child("locations").child(uid).child(todayWithZeroTime).child(time);
@@ -628,7 +540,7 @@ public class MainActivity extends AppCompatActivity implements android.location.
 
 
 
-    public void SendLocation() {
+    public void visible() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
@@ -653,8 +565,6 @@ public class MainActivity extends AppCompatActivity implements android.location.
         mDatabase.setValue(userMap);
     }
 
-
-
     @Override
     public void onLocationChanged(Location location) {
 
@@ -667,46 +577,19 @@ public class MainActivity extends AppCompatActivity implements android.location.
         Lat =  lat;
         Lng = lon;
 
-
         if(move == true)
         {
-
-            if((prevLng!=Lng && prevLat!=Lat))
-            {
-                try {
-                    LocationsHistory();
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
+            try {
+                LocationsHistory();
+            } catch (ParseException e) {
+                e.printStackTrace();
             }
 
             if(visible == true)
             {
-                SendLocation();
+                visible();
             }
-            /*
-            else
-            {
-                mapbox.clear();
-            }
-            */
-
-
         }
-        else
-        {
-            FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
-            String uid = current_user.getUid();
-            mDatabase = FirebaseDatabase.getInstance().getReference().child("Users").child(uid);
-            mDatabase.child("visibility").setValue("Invisible");
-            mDatabase = FirebaseDatabase.getInstance().getReference().child("Visibles").child(uid);
-            mDatabase.setValue(null);
-            mDatabase.removeValue(null);
-        }
-        prevLat= Lat;
-        prevLng = Lng;
-
-
 
 
     }
@@ -725,109 +608,5 @@ public class MainActivity extends AppCompatActivity implements android.location.
     public void onProviderDisabled(String provider) {
 
     }
-
-    public void FirebaseChanges()
-    {
-        DatabaseReference mRef = FirebaseDatabase.getInstance().getReference().child("Visibles");
-        mRef.addChildEventListener(new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-
-                String key = dataSnapshot.getKey();
-                String lat = (String) dataSnapshot.child("lat").getValue();
-                String lng = (String) dataSnapshot.child("lon").getValue();
-
-                double lat1 = Double.valueOf(lat);
-                double lng1 = Double.valueOf(lng);
-
-                LatLng latlng = new LatLng(lat1,lng1);
-                Locations.put(key,latlng);
-
-                //mapbox.clear();
-                Marker marker = mapbox.addMarker(new MarkerViewOptions()
-                        .position(latlng)
-                );
-                Markers.put(key,marker);
-
-                //Toast.makeText(getApplicationContext(), Markers.size()+"", Toast.LENGTH_LONG).show();
-                /*
-                for(Map.Entry<String,LatLng> entery : Locations.entrySet())
-                {
-                    mapbox.addMarker(new MarkerViewOptions()
-                            .position(entery.getValue())
-                    );
-
-
-                }
-                */
-
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-                String key = dataSnapshot.getKey();
-                String lat = (String) dataSnapshot.child("lat").getValue();
-                String lng = (String) dataSnapshot.child("lon").getValue();
-
-                double lat1 = Double.valueOf(lat);
-                double lng1 = Double.valueOf(lng);
-
-                LatLng latlng = new LatLng(lat1,lng1);
-                Locations.put(key,latlng);
-                //mapbox.clear();
-                Marker marker = mapbox.addMarker(new MarkerViewOptions()
-                        .position(latlng)
-                );
-
-                Markers.put(key,marker);
-
-
-
-                /*
-                mapbox.clear();
-                mapbox.addMarker(new MarkerViewOptions()
-                        .position(latlng)
-                );
-                */
-                /*
-                for(Map.Entry<String,LatLng> entery : Locations.entrySet())
-                {
-                    mapbox.addMarker(new MarkerViewOptions()
-                            .position(entery.getValue())
-                    );
-
-
-                }
-                */
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-
-
-                //mapbox.clear();
-
-
-
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-    }
-
-
-
-
-
-
 }
 
