@@ -4,6 +4,7 @@ package com.example.kadib.mapapp;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -12,10 +13,18 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
@@ -25,117 +34,80 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.iid.FirebaseInstanceId;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
+
 import android.Manifest;
+import android.telephony.TelephonyManager;
+import android.content.Context;
 
 
 public class StartActivity extends AppCompatActivity {
 
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
 
-    private Button mSignin;
 
-    //firebase
-    private FirebaseAuth mAuth;
-    private DatabaseReference mDatabase;
+    private Button mSignin;
+    private static String uniqueID = null;
+    private static final String PREF_UNIQUE_ID = "PREF_UNIQUE_ID";
+
+    //Http request
+    private RequestQueue mRequestQueue;
+    private StringRequest stringRequest;
+    private String url = "http://194.90.203.74/looking/api/user";
 
     //ProgressDialog
     private ProgressDialog mRegProgress;
     private ProgressBar mProgress;
 
+
+    private String id;
+    private String currentUser;
+    private String TAG = StartActivity.class.getName();
+    private static final String MY_PREFS_NAME = "MyPrefs";
+
+    SharedPreferences sharedpreferens;
+
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
 
-        mRegProgress = new ProgressDialog(this);
 
-        mProgress = (ProgressBar)findViewById(R.id.progressbar);
+        //check if user is connected
+        sharedpreferens = getSharedPreferences(MY_PREFS_NAME, Context.MODE_PRIVATE);
+        if(sharedpreferens.contains("Id"))
+        {
+            Intent mainIntent = new Intent(StartActivity.this, MainActivity.class);
+            startActivity(mainIntent);
+            finish();
+        }
 
-        mSignin = (Button)findViewById(R.id.mSigninBTN);
-
-        //firebase
-        mAuth = FirebaseAuth.getInstance();
-
+        //check location permission
         checkLocationPermission();
 
+        //progress bar
+        mRegProgress = new ProgressDialog(this);
+        mProgress = (ProgressBar)findViewById(R.id.progressbar);
 
+        id = id(this);
 
-
+        //sign in button
+        mSignin = (Button)findViewById(R.id.mSigninBTN);
         mSignin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //checkLocationPermission();
-                char[] chars = "abcdefghijklmnopqrstuvwxyz".toCharArray();
-                StringBuilder sb = new StringBuilder();
-                Random random = new Random();
-                for (int i = 0; i < 20; i++) {
-                    char c = chars[random.nextInt(chars.length)];
-                    sb.append(c);
-                }
-
-                String email = sb+"cyberserve@gmail.com";
-                String password = "cyber123456";
-
-                if(!TextUtils.isEmpty(email)|| !TextUtils.isEmpty(password)){
-                    mProgress.setVisibility(View.VISIBLE);
-                    register_user(email, password);
-
-                }
-
-
-
-            }
-        });
-
-    }
-    private void register_user(String email, String password) {
-
-        mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-            @Override
-            public void onComplete(@NonNull Task<AuthResult> task) {
-
-
-                if(task.isSuccessful()){
-
-                    FirebaseUser current_user = FirebaseAuth.getInstance().getCurrentUser();
-                    String uid = current_user.getUid();
-                    String deviceToken = FirebaseInstanceId.getInstance().getToken();
-                    mDatabase = FirebaseDatabase.getInstance().getReference().child("Users").child(uid);
-                    HashMap<String, String> userMap = new HashMap<>();
-                    userMap.put("device_token", deviceToken);
-                    userMap.put("visibility", "null");
-
-                    mDatabase.setValue(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-
-                            if (task.isSuccessful()){
-
-
-                                Intent mainIntent = new Intent(StartActivity.this, MainActivity.class);
-                                mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                startActivity(mainIntent);
-                                finish();
-
-                            }
-
-                        }
-                    });
-
-
-                }
-                else{
-                    Toast.makeText(StartActivity.this, "Cannot Sign in. Please Check The Form and Try again.,", Toast.LENGTH_LONG).show();
-                }
-
-
+                //String url = "http://192.168.0.92/looking/api/user"+currentUser;
+                //Toast.makeText(getApplicationContext(), currentUser, Toast.LENGTH_SHORT).show();
+                sendPostRequest();
 
             }
         });
 
     }
 
+    //method - check the location permission
     public boolean checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -176,6 +148,64 @@ public class StartActivity extends AppCompatActivity {
         }
     }
 
+    //method - create a unique id
+    public synchronized static String id(Context context) {
+        if (uniqueID == null) {
+            SharedPreferences sharedPrefs = context.getSharedPreferences(
+                    PREF_UNIQUE_ID, Context.MODE_PRIVATE);
+            uniqueID = sharedPrefs.getString(PREF_UNIQUE_ID, null);
+            if (uniqueID == null) {
+                uniqueID = UUID.randomUUID().toString();
+                SharedPreferences.Editor editor = sharedPrefs.edit();
+                editor.putString(PREF_UNIQUE_ID, uniqueID);
+                editor.commit();
+            }
+        }
+        return uniqueID;
+    }
+
+    //server request - post request
+    //response - user id
+    public void sendPostRequest()
+    {
+        mRequestQueue = Volley.newRequestQueue(this);
+        stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+
+                Log.i(TAG,"Response: "+response.toString());
+                SharedPreferences.Editor editor = sharedpreferens.edit();
+                editor.putString("Id", response);
+                editor.commit();
+
+                Intent mainIntent = new Intent(StartActivity.this, MainActivity.class);
+                startActivity(mainIntent);
+                finish();
+
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+                Log.i(TAG,"Error: "+error.toString());
+
+            }
+        }){
+            @Override
+            protected Map<String,String> getParams()
+            {
+                Map<String,String> params = new HashMap<String, String>();
+                params.put("Device_token",id);
+                params.put("Visibility","false");
+                params.put("Lat","0.0");
+                params.put("Lng","0.0");
+                return params;
+            }
+        };
+        mRequestQueue.add(stringRequest);
+
+    }
 
 
 }
